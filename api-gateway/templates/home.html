@@ -1,0 +1,25 @@
+{% extends 'base.html' %}
+
+{% block title %}Home - Bookstore{% endblock %}
+
+{% block content %}
+<div class="mb-4">
+    <h2>Welcome to Bookstore</h2>
+    {% if customer %}
+        <p class="text-muted">Hello, {{ customer.name }}! Browse our collection and find your next favorite book.</p>
+    {% elif staff %}
+        <p class="text-muted">Welcome back, {{ staff.name }}! Manage books and inventory from your dashboard.</p>
+    {% elif manager %}
+        <p class="text-muted">Welcome, {{ manager.name }}! View reports and analytics from your dashboard.</p>
+    {% else %}
+        <p class="text-muted">Discover thousands of books. <a href="/register/">Register</a> or <a href="/login/">Login</a> to start shopping.</p>
+    {% endif %}
+</div>
+
+<div class="d-flex gap-2 mt-3">
+    <a href="/books/" class="btn btn-success">Browse All Books</a>
+    {% if customer %}
+    <a href="/books/recommendations/" class="btn btn-primary">✨ Get Recommendations</a>
+    {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,29 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(find /c/BOOKSTORE05 -name \"models.py\" -exec wc -l {} +)",
+      "Bash(for service in staff-service manager-service customer-service catalog-service book-service cart-service order-service ship-service pay-service comment-rate-service recommender-ai-service promotion-service analytics-service communication-service supplier-service)",
+      "Bash(do)",
+      "Read(//c/BOOKSTORE05/$service/**)",
+      "Bash(done)",
+      "Bash(echo \"=== $service ===\")",
+      "Bash(grep -n \"REST_FRAMEWORK\\\\|RENDERER\" c:/BOOKSTORE05/manager-service/*/settings.py c:/BOOKSTORE05/customer-service/*/settings.py)",
+      "Bash(for f in c:/BOOKSTORE05/analytics-service/analytics_service/settings.py c:/BOOKSTORE05/api-gateway/api_gateway/settings.py c:/BOOKSTORE05/book-service/book_service/settings.py c:/BOOKSTORE05/cart-service/cart_service/settings.py c:/BOOKSTORE05/catalog-service/catalog_service/settings.py c:/BOOKSTORE05/comment-rate-service/comment_rate_service/settings.py c:/BOOKSTORE05/communication-service/communication_service/settings.py c:/BOOKSTORE05/customer-service/customer_service/settings.py c:/BOOKSTORE05/manager-service/manager_service/settings.py c:/BOOKSTORE05/order-service/order_service/settings.py c:/BOOKSTORE05/pay-service/pay_service/settings.py c:/BOOKSTORE05/promotion-service/promotion_service/settings.py c:/BOOKSTORE05/recommender-ai-service/recommender_service/settings.py c:/BOOKSTORE05/ship-service/ship_service/settings.py c:/BOOKSTORE05/staff-service/staff_service/settings.py c:/BOOKSTORE05/supplier-service/supplier_service/settings.py)",
+      "Bash(sed -i \"s|''rest_framework.renderers.JSONRenderer'',|''rest_framework.renderers.JSONRenderer'',\\\\n        ''rest_framework.renderers.BrowsableAPIRenderer'',|\" \"$f\")",
+      "Bash(echo \"Updated: $f\")",
+      "Bash(for f in c:/BOOKSTORE05/staff-service/staff_service/settings.py c:/BOOKSTORE05/manager-service/manager_service/settings.py c:/BOOKSTORE05/customer-service/customer_service/settings.py c:/BOOKSTORE05/catalog-service/catalog_service/settings.py c:/BOOKSTORE05/book-service/book_service/settings.py c:/BOOKSTORE05/cart-service/cart_service/settings.py c:/BOOKSTORE05/order-service/order_service/settings.py c:/BOOKSTORE05/ship-service/ship_service/settings.py c:/BOOKSTORE05/pay-service/pay_service/settings.py c:/BOOKSTORE05/comment-rate-service/comment_rate_service/settings.py c:/BOOKSTORE05/recommender-ai-service/recommender_service/settings.py c:/BOOKSTORE05/promotion-service/promotion_service/settings.py c:/BOOKSTORE05/analytics-service/analytics_service/settings.py c:/BOOKSTORE05/communication-service/communication_service/settings.py c:/BOOKSTORE05/supplier-service/supplier_service/settings.py)",
+      "Bash(sed -i \"s|''NAME'': BASE_DIR / ''db.sqlite3''|''NAME'': BASE_DIR / ''db'' / ''db.sqlite3''|\" \"$f\")",
+      "Bash(grep -E '\\\\.\\(css|js|jpg|png|gif|svg|ico\\)$')",
+      "Bash(py --version)",
+      "Bash(TPL=\"c:/BOOKSTORE05/api-gateway/templates\")",
+      "Read(//c/BOOKSTORE05/$TPL/customer/**)",
+      "Read(//c/BOOKSTORE05/$TPL/books/**)",
+      "Read(//c/BOOKSTORE05/$TPL/cart/**)",
+      "Read(//c/BOOKSTORE05/$TPL/orders/**)",
+      "Bash(python -c \":*)",
+      "Bash(python:*)",
+      "Bash(grep -l \"PyMySQL\" c:/BOOKSTORE05/*/requirements.txt)",
+      "Bash(docker exec bookstore05-comment-rate-service-1 python -c \"import requests; r = requests.get\\(''http://localhost:8010/api/ratings/book/15/''\\); print\\(r.status_code, r.text[:300]\\)\")"
+    ]
+  }
+}

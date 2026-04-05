@@ -1,0 +1,148 @@
+{% extends 'base.html' %}
+
+{% block title %}Checkout - Bookstore{% endblock %}
+
+{% block content %}
+<h2>Checkout</h2>
+
+<div class="row">
+    <div class="col-md-8">
+        <div class="card mb-3">
+            <div class="card-header"><h5>Order Details</h5></div>
+            <div class="card-body">
+                <form method="post">
+                    {% csrf_token %}
+
+                    <div class="mb-3">
+                        <label for="payment_method" class="form-label">Payment Method</label>
+                        <select id="payment_method" name="payment_method" class="form-select" required>
+                            <option value="credit_card">Credit Card</option>
+                            <option value="debit_card">Debit Card</option>
+                            <option value="paypal">PayPal</option>
+                            <option value="cash_on_delivery">Cash on Delivery</option>
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="shipping_method" class="form-label">Shipping Method</label>
+                        <select id="shipping_method" name="shipping_method" class="form-select" required>
+                            <option value="standard">Standard (5-7 days)</option>
+                            <option value="express">Express (2-3 days)</option>
+                            <option value="overnight">Overnight</option>
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="shipping_address" class="form-label">Shipping Address</label>
+                        <textarea id="shipping_address" name="shipping_address" class="form-control" rows="3" required></textarea>
+                    </div>
+
+                    <input type="hidden" id="hidden_discount_code" name="discount_code" value="">
+
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-success btn-lg flex-grow-1">Place Order</button>
+                        <a href="/cart/" class="btn btn-secondary btn-lg">Back to Cart</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="card premium-card shadow">
+            <div class="card-header bg-gradient bg-primary text-white"><h5>Order Summary</h5></div>
+            <div class="card-body">
+                {% for item in cart.items %}
+                <div class="d-flex justify-content-between mb-2">
+                    <span class="text-truncate" style="max-width: 200px;">{{ item.book_title }} <small class="text-muted">x {{ item.quantity }}</small></span>
+                    <span>${{ item.subtotal|floatformat:2 }}</span>
+                </div>
+                {% endfor %}
+                <hr>
+                
+                <div class="mb-3">
+                    <label class="form-label fw-bold">Have a Discount Code?</label>
+                    <div class="input-group">
+                        <input type="text" id="discount_code_input" class="form-control" placeholder="Enter code (e.g. SUMMER2024)">
+                        <button class="btn btn-outline-primary" type="button" id="btn_apply_discount">Apply</button>
+                    </div>
+                    <div id="discount_feedback" class="form-text mt-1"></div>
+                </div>
+
+                <div class="d-flex justify-content-between">
+                    <span>Subtotal:</span>
+                    <span id="subtotal_amount" data-total="{{ cart.total }}">${{ cart.total|floatformat:2 }}</span>
+                </div>
+                <div id="discount_row" class="d-flex justify-content-between text-success mt-1" style="display: none !important;">
+                    <span>Discount applied:</span>
+                    <span id="discount_amount_display">-$0.00</span>
+                </div>
+                <hr>
+                <div class="d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">Total:</h5>
+                    <h4 class="mb-0 text-primary" id="final_total_display">${{ cart.total|floatformat:2 }}</h4>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        const btnApply = document.getElementById("btn_apply_discount");
+        const codeInput = document.getElementById("discount_code_input");
+        const hiddenFinalCode = document.getElementById("hidden_discount_code");
+        const feedback = document.getElementById("discount_feedback");
+        const discountRow = document.getElementById("discount_row");
+        const discountAmtDisplay = document.getElementById("discount_amount_display");
+        const finalTotalDisplay = document.getElementById("final_total_display");
+        const subtotal = parseFloat(document.getElementById("subtotal_amount").getAttribute("data-total"));
+
+        btnApply.addEventListener("click", function() {
+            const code = codeInput.value.trim();
+            if (!code) return;
+            
+            btnApply.disabled = true;
+            btnApply.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
+            
+            fetch('/discount/validate/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+                },
+                body: JSON.stringify({ code: code })
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.valid) {
+                    const pct = data.discount.discount_percent;
+                    const discountVal = subtotal * (pct / 100.0);
+                    const finalTotal = subtotal - discountVal;
+                    
+                    hiddenFinalCode.value = code; // Pass code to the final form
+                    
+                    discountRow.style.setProperty('display', 'flex', 'important');
+                    discountAmtDisplay.textContent = "-$" + discountVal.toFixed(2);
+                    finalTotalDisplay.textContent = "$" + finalTotal.toFixed(2);
+                    
+                    feedback.innerHTML = `<span class="text-success"><i class="bi bi-check-circle"></i> Discount applied! (${pct}%)</span>`;
+                } else {
+                    hiddenFinalCode.value = "";
+                    discountRow.style.setProperty('display', 'none', 'important');
+                    finalTotalDisplay.textContent = "$" + subtotal.toFixed(2);
+                    
+                    feedback.innerHTML = `<span class="text-danger"><i class="bi bi-x-circle"></i> ${data.error}</span>`;
+                }
+            })
+            .catch(err => {
+                feedback.innerHTML = '<span class="text-danger">Error connecting to server.</span>';
+            })
+            .finally(() => {
+                btnApply.disabled = false;
+                btnApply.innerText = 'Apply';
+            });
+        });
+    });
+</script>
+{% endblock %}

@@ -1,0 +1,43 @@
+{% extends 'base.html' %}
+
+{% block title %}My Orders - Bookstore{% endblock %}
+
+{% block content %}
+<h2>My Orders</h2>
+
+{% if orders %}
+<div class="card premium-card shadow mt-4">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table mb-0 table-hover">
+                <thead style="background: var(--bg-tertiary);">
+                    <tr>
+                        <th>Order ID</th>
+                        <th>Date</th>
+                        <th>Items</th>
+                        <th>Total</th>
+                        <th>Status</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for order in orders %}
+                    <tr>
+                        <td class="fw-bold text-primary">#{{ order.id }}</td>
+                        <td class="text-muted">{{ order.created_at|date:"M d, Y H:i" }}</td>
+                        <td>{{ order.items|length }} items</td>
+                        <td class="fw-bold">${{ order.final_amount|floatformat:2 }}</td>
+                        <td><span class="badge bg-info px-3 py-2">{{ order.status }}</span></td>
+                        <td><a href="/orders/{{ order.id }}/" class="btn btn-sm btn-outline-primary"><i class="bi bi-eye"></i> Details</a></td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% else %}
+<p>No orders yet.</p>
+<a href="/books/" class="btn btn-primary">Start Shopping</a>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,174 @@
+{% extends 'base.html' %}
+{% block title %}AI Chat - Bookstore{% endblock %}
+{% block content %}
+<div class="container py-4">
+  <div class="row justify-content-center">
+    <div class="col-lg-8">
+      <div class="card shadow" style="border-radius:16px; overflow:hidden;">
+        <div class="card-header d-flex align-items-center gap-2" style="background:linear-gradient(135deg,#667eea,#764ba2); color:white; padding:16px 20px;">
+          <span style="font-size:1.5rem;">🤖</span>
+          <div>
+            <h5 class="mb-0 fw-bold">AI Bookstore Assistant</h5>
+            <small style="opacity:0.85;">Tư vấn sách thông minh • RAG powered</small>
+          </div>
+        </div>
+
+        <div id="chat-messages" style="height:450px; overflow-y:auto; padding:20px; background:#1a1a2e; display:flex; flex-direction:column; gap:12px;">
+          <!-- Welcome message -->
+          <div class="d-flex gap-2 align-items-start">
+            <div style="width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,#667eea,#764ba2);display:flex;align-items:center;justify-content:center;flex-shrink:0;">🤖</div>
+            <div style="max-width:75%;">
+              <div style="background:#16213e;color:#e0e0e0;padding:12px 16px;border-radius:0 12px 12px 12px;font-size:0.92rem;line-height:1.5;">
+                Xin chào! Tôi là AI Assistant của Bookstore. Tôi có thể giúp bạn:<br>
+                • 📚 Gợi ý sách theo sở thích<br>
+                • 💰 Tìm sách theo giá<br>
+                • ✍️ Giới thiệu sách theo tác giả<br>
+                • 🎭 Khám phá theo thể loại<br><br>
+                Bạn muốn tìm loại sách gì hôm nay?
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div style="background:#16213e; padding:16px; border-top:1px solid #0f3460;">
+          <div class="d-flex gap-2">
+            <input type="text" id="chat-input" class="form-control" placeholder="Hỏi tôi về sách..."
+              style="background:#0f3460;border:1px solid #667eea;color:white;border-radius:25px;padding:10px 18px;"
+              onkeypress="if(event.key==='Enter') sendMessage()">
+            <button onclick="sendMessage()" id="send-btn"
+              style="background:linear-gradient(135deg,#667eea,#764ba2);border:none;color:white;border-radius:25px;padding:10px 24px;font-weight:600;white-space:nowrap;">
+              Gửi ✈
+            </button>
+          </div>
+          <div class="mt-2 d-flex flex-wrap gap-2">
+            <small style="color:#888;width:100%;">📚 Sách:</small>
+            <button onclick="setInput('Gợi ý sách fantasy cho tôi')" class="btn btn-sm chip">🧙 Fantasy</button>
+            <button onclick="setInput('Gợi ý sách hay nhất hiện tại')" class="btn btn-sm chip">⭐ Sách hay nhất</button>
+            <button onclick="setInput('Sách rẻ dưới 20 USD')" class="btn btn-sm chip">💰 Sách rẻ</button>
+            <button onclick="setInput('Sách của J.K. Rowling')" class="btn btn-sm chip">✍️ J.K. Rowling</button>
+            <button onclick="setInput('Gợi ý sách khoa học viễn tưởng')" class="btn btn-sm chip">🚀 Sci-Fi</button>
+            <button onclick="setInput('Sách của George Orwell')" class="btn btn-sm chip">📖 George Orwell</button>
+            <button onclick="setInput('Gợi ý sách mystery trinh thám')" class="btn btn-sm chip">🔍 Mystery</button>
+            <button onclick="setInput('Sách giá trên 25 USD')" class="btn btn-sm chip">💎 Sách cao cấp</button>
+            <small style="color:#888;width:100%;margin-top:4px;">🛎️ Dịch vụ:</small>
+            <button onclick="setInput('Phí và thời gian giao hàng như thế nào?')" class="btn btn-sm chip">🚚 Giao hàng</button>
+            <button onclick="setInput('Phương thức thanh toán nào được hỗ trợ?')" class="btn btn-sm chip">💳 Thanh toán</button>
+            <button onclick="setInput('Chính sách đổi trả sách như thế nào?')" class="btn btn-sm chip">🔄 Đổi trả</button>
+            <button onclick="setInput('Có mã giảm giá khuyến mãi không?')" class="btn btn-sm chip">🎁 Khuyến mãi</button>
+          </div>
+          <style>
+            .chip { background:#0f3460;color:#aaa;border:1px solid #444;border-radius:20px;font-size:0.75rem;padding:3px 10px; }
+            .chip:hover { background:#1a4a7a;color:#fff;border-color:#667eea; }
+          </style>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+function setInput(text) {
+  document.getElementById('chat-input').value = text;
+  document.getElementById('chat-input').focus();
+}
+
+function addMessage(role, text, sources, personalized) {
+  const container = document.getElementById('chat-messages');
+  const isUser = role === 'user';
+
+  const wrapper = document.createElement('div');
+  wrapper.className = 'd-flex gap-2 align-items-start' + (isUser ? ' flex-row-reverse' : '');
+
+  const avatar = document.createElement('div');
+  avatar.style.cssText = 'width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:1rem;';
+  if (isUser) {
+    avatar.style.background = 'linear-gradient(135deg,#11998e,#38ef7d)';
+    avatar.textContent = '👤';
+  } else {
+    avatar.style.background = 'linear-gradient(135deg,#667eea,#764ba2)';
+    avatar.textContent = '🤖';
+  }
+
+  const bubble = document.createElement('div');
+  bubble.style.cssText = 'max-width:75%;';
+
+  const msgDiv = document.createElement('div');
+  msgDiv.style.cssText = isUser
+    ? 'background:linear-gradient(135deg,#667eea,#764ba2);color:white;padding:12px 16px;border-radius:12px 0 12px 12px;font-size:0.92rem;line-height:1.5;'
+    : 'background:#16213e;color:#e0e0e0;padding:12px 16px;border-radius:0 12px 12px 12px;font-size:0.92rem;line-height:1.5;';
+  msgDiv.innerHTML = text.replace(/\n/g, '<br>');
+  bubble.appendChild(msgDiv);
+
+  if (personalized && role === 'assistant') {
+    const badge = document.createElement('div');
+    badge.style.cssText = 'margin-top:5px;';
+    badge.innerHTML = '<span style="background:linear-gradient(135deg,#11998e,#38ef7d);color:#000;padding:2px 8px;border-radius:10px;font-size:0.72rem;font-weight:600;">✨ Cá nhân hóa theo hành vi của bạn</span>';
+    bubble.appendChild(badge);
+  }
+
+  if (sources && sources.length > 0) {
+    const srcDiv = document.createElement('div');
+    srcDiv.style.cssText = 'margin-top:6px;font-size:0.78rem;color:#888;';
+    srcDiv.innerHTML = '📖 Nguồn: ' + sources.slice(0,3).map(s => `<em>${s.title || s}</em>`).join(', ');
+    bubble.appendChild(srcDiv);
+  }
+
+  wrapper.appendChild(avatar);
+  wrapper.appendChild(bubble);
+  container.appendChild(wrapper);
+  container.scrollTop = container.scrollHeight;
+}
+
+function addLoading() {
+  const container = document.getElementById('chat-messages');
+  const el = document.createElement('div');
+  el.id = 'loading-msg';
+  el.className = 'd-flex gap-2 align-items-start';
+  el.innerHTML = `<div style="width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,#667eea,#764ba2);display:flex;align-items:center;justify-content:center;flex-shrink:0;">🤖</div>
+    <div style="background:#16213e;color:#888;padding:12px 16px;border-radius:0 12px 12px 12px;font-size:0.92rem;">
+      <span class="spinner-border spinner-border-sm me-2" role="status"></span>Đang suy nghĩ...
+    </div>`;
+  container.appendChild(el);
+  container.scrollTop = container.scrollHeight;
+}
+
+function removeLoading() {
+  const el = document.getElementById('loading-msg');
+  if (el) el.remove();
+}
+
+async function sendMessage() {
+  const input = document.getElementById('chat-input');
+  const btn = document.getElementById('send-btn');
+  const text = input.value.trim();
+  if (!text) return;
+
+  addMessage('user', text);
+  input.value = '';
+  btn.disabled = true;
+  addLoading();
+
+  try {
+    const resp = await fetch('/chat/api/', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken')},
+      body: JSON.stringify({message: text})
+    });
+    const data = await resp.json();
+    removeLoading();
+    addMessage('assistant', data.response || 'Không có phản hồi.', data.sources, data.personalized);
+  } catch(e) {
+    removeLoading();
+    addMessage('assistant', 'Xin lỗi, đã có lỗi xảy ra. Vui lòng thử lại sau.');
+  } finally {
+    btn.disabled = false;
+    input.focus();
+  }
+}
+
+function getCookie(name) {
+  const v = document.cookie.match('(^|;) ?' + name + '=([^;]*)(;|$)');
+  return v ? v[2] : '';
+}
+</script>
+{% endblock %}

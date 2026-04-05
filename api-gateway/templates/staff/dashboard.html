@@ -1,0 +1,74 @@
+{% extends 'base.html' %}
+
+{% block title %}Staff Dashboard - Bookstore{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2>Staff Dashboard</h2>
+    <a href="/books/" class="btn btn-secondary">🏠 Back to Store</a>
+</div>
+<p class="text-muted">Welcome, {{ staff.name }}!</p>
+
+<div class="row mb-4">
+    <div class="col-md-4">
+        <div class="card text-center h-100">
+            <div class="card-body d-flex flex-column align-items-center justify-content-center">
+                <h5 class="card-title mb-3">Total Books</h5>
+                <h2 class="text-primary mb-3">{{ total_books }}</h2>
+                <a href="/staff/books/" class="btn btn-primary btn-sm mt-auto">Manage Books</a>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card text-center h-100">
+            <div class="card-body d-flex flex-column align-items-center justify-content-center">
+                <h5 class="card-title mb-3">Total Orders</h5>
+                <h2 class="text-success mb-3">{{ total_orders }}</h2>
+                <a href="/staff/orders/" class="btn btn-success btn-sm mt-auto">Manage Orders</a>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card text-center h-100">
+            <div class="card-body d-flex flex-column align-items-center justify-content-center">
+                <h5 class="card-title mb-3">Low Stock Items</h5>
+                <h2 class="text-danger mb-3">{{ low_stock_books|length }}</h2>
+                <a href="#low-stock" class="btn btn-danger btn-sm mt-auto">View Items</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="low-stock" class="d-flex justify-content-between align-items-center mb-3">
+    <h4>Low Stock Books</h4>
+    <div>
+        <a href="/staff/books/add/" class="btn btn-success btn-sm">Add New Book</a>
+        <a href="/staff/books/" class="btn btn-primary btn-sm">Manage Books</a>
+    </div>
+</div>
+
+{% if low_stock_books %}
+<table class="table">
+        <thead>
+            <tr>
+                <th>Title</th>
+                <th>Author</th>
+                <th>Stock</th>
+                <th>Action</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for book in low_stock_books %}
+            <tr>
+                <td>{{ book.title }}</td>
+                <td>{{ book.author }}</td>
+                <td><span class="badge bg-danger">{{ book.stock }}</span></td>
+                <td><a href="/staff/books/{{ book.id }}/edit/" class="btn btn-sm btn-warning">Update Stock</a></td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+{% else %}
+<div class="alert alert-success">All books are well stocked.</div>
+{% endif %}
+{% endblock %}

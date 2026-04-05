@@ -1,0 +1,56 @@
+{% extends 'base.html' %}
+
+{% block title %}Manager Dashboard - Bookstore{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2>Manager Dashboard</h2>
+    <a href="/manager/reports/" class="btn btn-primary">View All Reports</a>
+</div>
+<p class="text-muted">Welcome, {{ manager.name }}!</p>
+
+<h4 class="mb-3">Business Reports</h4>
+<div class="row mb-4">
+    {% if sales_report %}
+    <div class="col-md-4 mb-3">
+        <div class="card shadow-sm h-100">
+            <div class="card-header bg-dark text-white">
+                <h5 class="mb-0">Sales Report</h5>
+            </div>
+            <div class="card-body">
+                <p><strong>Total Orders:</strong> <span class="text-primary">{{ sales_report.total_orders|default:"N/A" }}</span></p>
+                <p><strong>Total Revenue:</strong> <span class="text-success">${{ sales_report.total_revenue|default:"0"|floatformat:2 }}</span></p>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    {% if inventory_report %}
+    <div class="col-md-4 mb-3">
+        <div class="card shadow-sm h-100">
+            <div class="card-header bg-dark text-white">
+                <h5 class="mb-0">Inventory Report</h5>
+            </div>
+            <div class="card-body">
+                <p><strong>Total Books:</strong> <span class="text-primary">{{ inventory_report.total_books|default:"N/A" }}</span></p>
+                <p><strong>Low Stock:</strong> <span class="text-danger">{{ inventory_report.low_stock_count|default:"0" }}</span></p>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    {% if customer_report %}
+    <div class="col-md-4 mb-3">
+        <div class="card shadow-sm h-100">
+            <div class="card-header bg-dark text-white">
+                <h5 class="mb-0">Customer Report</h5>
+            </div>
+            <div class="card-body">
+                <p><strong>Total Customers:</strong> <span class="text-primary">{{ customer_report.total_customers|default:"N/A" }}</span></p>
+                <p><strong>Active:</strong> <span class="text-success">{{ customer_report.active_customers|default:"0" }}</span></p>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

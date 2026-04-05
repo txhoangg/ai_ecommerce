@@ -1,0 +1,89 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ book.title }} - Bookstore{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-8">
+        <h2>{{ book.title }}</h2>
+        <p><strong>Author:</strong> {{ book.author }}</p>
+        <p><strong>Price:</strong> <span class="text-success">${{ book.price }}</span></p>
+        <p><strong>Stock:</strong> {{ book.stock }}</p>
+        {% if book.description %}
+        <p><strong>Description:</strong></p>
+        <p>{{ book.description }}</p>
+        {% endif %}
+
+        {% if customer %}
+        <a href="/cart/add/{{ book.id }}/" class="btn btn-success">Add to Cart</a>
+        {% else %}
+        <a href="/login/" class="btn btn-success">Add to Cart</a>
+        {% endif %}
+    </div>
+
+    <div class="col-md-4">
+        <h4>Average Rating</h4>
+        {% if avg_rating %}
+            <h2>⭐ {{ avg_rating|floatformat:1 }}</h2>
+        {% else %}
+            <p>No ratings yet</p>
+        {% endif %}
+
+        <div class="card mb-3">
+            <div class="card-body">
+                {% if ratings %}
+                <p><strong>Total Reviews:</strong> {{ reviews|length }}</p>
+                {% endif %}
+
+                <h6 class="mt-3 text-primary">Rate & Review</h6>
+                <form method="post" action="/books/{{ book.id }}/rate_and_review/">
+                    {% csrf_token %}
+                    <div class="mb-2">
+                        <select name="score" class="form-select form-control-sm border-primary" style="background: var(--bg-tertiary);">
+                            <option value="">Select rating (optional)</option>
+                            <option value="5">⭐⭐⭐⭐⭐ (5)</option>
+                            <option value="4">⭐⭐⭐⭐ (4)</option>
+                            <option value="3">⭐⭐⭐ (3)</option>
+                            <option value="2">⭐⭐ (2)</option>
+                            <option value="1">⭐ (1)</option>
+                        </select>
+                    </div>
+                    <div class="mb-2">
+                        <textarea name="comment" class="form-control" rows="3" placeholder="Write your review here... (optional)"></textarea>
+                    </div>
+                    <button type="submit" class="btn btn-primary w-100">Submit</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mt-4">
+    <div class="col-12">
+        <h4>Customer Reviews</h4>
+        {% for review in reviews %}
+        <div class="card mb-2">
+            <div class="card-body">
+                <div class="d-flex align-items-center mb-2">
+                    <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center me-3" style="width: 40px; height: 40px; font-weight: bold;">
+                        {{ review.customer_name|slice:":1"|upper }}
+                    </div>
+                    <div>
+                        <strong class="d-block">
+                            {{ review.customer_name }}
+                            {% if review.score %}
+                                <span class="text-warning ms-1" style="font-size: 0.9em;">⭐ {{ review.score|floatformat:1 }}</span>
+                            {% endif %}
+                        </strong>
+                        <small class="text-muted">{{ review.created_at|date:"F d, Y" }}</small>
+                    </div>
+                </div>
+                <p class="mb-0 ms-5">{{ review.comment }}</p>
+            </div>
+        </div>
+        {% empty %}
+        <p class="text-muted">No reviews yet. Be the first to review this book!</p>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}

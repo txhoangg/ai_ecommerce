@@ -1,0 +1,84 @@
+{% extends 'base.html' %}
+
+{% block title %}Recommendations - Bookstore{% endblock %}
+
+{% block content %}
+<div class="mb-4">
+    <h2>📚 Book Recommendations</h2>
+    {% if customer %}
+    <p class="text-muted">Based on your purchase history and preferences</p>
+    {% else %}
+    <p class="text-muted">Popular books you might like</p>
+    {% endif %}
+</div>
+
+<div class="row">
+    {% for rec in recommendations %}
+    <div class="col-md-4 mb-4">
+        <div class="card h-100 shadow-sm">
+            <div class="card-body">
+                {% if rec.book %}
+                <h5 class="card-title">{{ rec.book.title }}</h5>
+                <p class="card-text">
+                    <strong>Author:</strong> {{ rec.book.author }}<br>
+                    <strong>Price:</strong> <span class="text-success">${{ rec.book.price }}</span><br>
+                </p>
+                {% if rec.reason %}
+                <p class="card-text text-muted small">{{ rec.reason }}</p>
+                {% endif %}
+                <a href="/books/{{ rec.book.id }}/" class="btn btn-sm btn-info">View Details</a>
+                {% else %}
+                <h5 class="card-title">{{ rec.title }}</h5>
+                <p class="card-text">
+                    <strong>Author:</strong> {{ rec.author }}<br>
+                    <strong>Price:</strong> <span class="text-success">${{ rec.price }}</span><br>
+                </p>
+                <a href="/books/{{ rec.id }}/" class="btn btn-sm btn-info">View Details</a>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    {% empty %}
+    <div class="col-12">
+        <div class="alert alert-info">
+            <h5>No recommendations available</h5>
+            <p>Purchase and rate books to get personalized recommendations!</p>
+            <a href="/books/" class="btn btn-primary">Browse All Books</a>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+{% if customer %}
+<div class="mt-4">
+    <div class="card">
+        <div class="card-body">
+            <h5 class="card-title">💡 How to get better recommendations?</h5>
+            <ul>
+                <li>Purchase more books so the system can learn your preferences</li>
+                <li>Rate and review books you've read</li>
+                <li>Add books to your wishlist</li>
+            </ul>
+        </div>
+    </div>
+</div>
+{% else %}
+<div class="mt-4">
+    <div class="alert alert-warning">
+        <h5>Login for personalized recommendations!</h5>
+        <p>When logged in, we'll suggest books based on your purchase history and preferences.</p>
+        <a href="/login/" class="btn btn-primary">Login Now</a>
+    </div>
+</div>
+{% endif %}
+
+<style>
+.card {
+    transition: transform 0.2s;
+}
+.card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.2) !important;
+}
+</style>
+{% endblock %}

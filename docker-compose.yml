@@ -1,0 +1,275 @@
+version: '3.8'
+
+services:
+  # ─── Databases ────────────────────────────────────────────────────────────────
+
+  mysql:
+    image: mysql:8.0
+    command: --default-authentication-plugin=mysql_native_password
+    environment:
+      MYSQL_ROOT_PASSWORD: 12345678
+    ports:
+      - "3307:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./init-mysql.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - bookstore06-network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p12345678"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  postgres:
+    image: postgres:15
+    environment:
+      POSTGRES_USER: root
+      POSTGRES_PASSWORD: 12345678
+      POSTGRES_DB: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init-postgres.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - bookstore06-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U root -d postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  # ─── Message Broker ───────────────────────────────────────────────────────────
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    environment:
+      RABBITMQ_DEFAULT_USER: root
+      RABBITMQ_DEFAULT_PASS: 12345678
+    networks:
+      - bookstore06-network
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  # ─── Services ─────────────────────────────────────────────────────────────────
+
+  # API Gateway - Port 8000 (MySQL)
+  api-gateway:
+    build: ./api-gateway
+    ports:
+      - "8000:8000"
+    environment:
+      - STAFF_SERVICE_URL=http://staff-service:8001
+      - MANAGER_SERVICE_URL=http://manager-service:8002
+      - CUSTOMER_SERVICE_URL=http://customer-service:8003
+      - CATALOG_SERVICE_URL=http://catalog-service:8004
+      - BOOK_SERVICE_URL=http://book-service:8005
+      - CART_SERVICE_URL=http://cart-service:8006
+      - ORDER_SERVICE_URL=http://order-service:8007
+      - SHIP_SERVICE_URL=http://ship-service:8008
+      - PAY_SERVICE_URL=http://pay-service:8009
+      - COMMENT_RATE_SERVICE_URL=http://comment-rate-service:8010
+      - RECOMMENDER_SERVICE_URL=http://recommender-ai-service:8011
+      - DB_HOST=mysql
+      - DB_NAME=apigateway_db
+      - DB_USER=root
+      - DB_PASSWORD=12345678
+    depends_on:
+      mysql:
+        condition: service_healthy
+    networks:
+      - bookstore06-network
+
+  # Staff Service - Port 8001 (MySQL)
+  staff-service:
+    build: ./staff-service
+    environment:
+      - DB_HOST=mysql
+      - DB_NAME=staff_db
+      - DB_USER=root
+      - DB_PASSWORD=12345678
+    depends_on:
+      mysql:
+        condition: service_healthy
+    networks:
+      - bookstore06-network
+
+  # Manager Service - Port 8002 (PostgreSQL)
+  manager-service:
+    build: ./manager-service
+    environment:
+      - STAFF_SERVICE_URL=http://staff-service:8001
+      - CUSTOMER_SERVICE_URL=http://customer-service:8003
+      - BOOK_SERVICE_URL=http://book-service:8005
+      - ORDER_SERVICE_URL=http://order-service:8007
+      - COMMENT_RATE_SERVICE_URL=http://comment-rate-service:8010
+      - DB_HOST=postgres
+      - DB_NAME=manager_db
+      - DB_USER=root
+      - DB_PASSWORD=12345678
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - bookstore06-network
+
+  # Customer Service - Port 8003 (PostgreSQL)
+  customer-service:
+    build: ./customer-service
+    environment:
+      - CART_SERVICE_URL=http://cart-service:8006
+      - DB_HOST=postgres
+      - DB_NAME=customer_db
+      - DB_USER=root
+      - DB_PASSWORD=12345678
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - bookstore06-network
+
+  # Catalog Service - Port 8004 (MySQL)
+  catalog-service:
+    build: ./catalog-service
+    environment:
+      - DB_HOST=mysql
+      - DB_NAME=catalog_db
+      - DB_USER=root
+      - DB_PASSWORD=12345678
+    depends_on:
+      mysql:
+        condition: service_healthy
+    networks:
+      - bookstore06-network
+
+  # Book Service - Port 8005 (PostgreSQL)
+  book-service:
+    build: ./book-service
+    environment:
+      - STAFF_SERVICE_URL=http://staff-service:8001
+      - CATALOG_SERVICE_URL=http://catalog-service:8004
+      - DB_HOST=postgres
+      - DB_NAME=book_db
+      - DB_USER=root
+      - DB_PASSWORD=12345678
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - bookstore06-network
+
+  # Cart Service - Port 8006 (MySQL)
+  cart-service:
+    build: ./cart-service
+    environment:
+      - BOOK_SERVICE_URL=http://book-service:8005
+      - DB_HOST=mysql
+      - DB_NAME=cart_db
+      - DB_USER=root
+      - DB_PASSWORD=12345678
+    depends_on:
+      mysql:
+        condition: service_healthy
+    networks:
+      - bookstore06-network
+
+  # Order Service - Port 8007 (PostgreSQL)
+  order-service:
+    build: ./order-service
+    environment:
+      - CART_SERVICE_URL=http://cart-service:8006
+      - BOOK_SERVICE_URL=http://book-service:8005
+      - PAY_SERVICE_URL=http://pay-service:8009
+      - SHIP_SERVICE_URL=http://ship-service:8008
+      - DB_HOST=postgres
+      - DB_NAME=order_db
+      - DB_USER=root
+      - DB_PASSWORD=12345678
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - bookstore06-network
+
+  # Ship Service - Port 8008 (MySQL)
+  ship-service:
+    build: ./ship-service
+    environment:
+      - DB_HOST=mysql
+      - DB_NAME=ship_db
+      - DB_USER=root
+      - DB_PASSWORD=12345678
+    depends_on:
+      mysql:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - bookstore06-network
+
+  # Pay Service - Port 8009 (PostgreSQL)
+  pay-service:
+    build: ./pay-service
+    environment:
+      - DB_HOST=postgres
+      - DB_NAME=pay_db
+      - DB_USER=root
+      - DB_PASSWORD=12345678
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - bookstore06-network
+
+  # Comment Rate Service - Port 8010 (MySQL)
+  comment-rate-service:
+    build: ./comment-rate-service
+    environment:
+      - BOOK_SERVICE_URL=http://book-service:8005
+      - DB_HOST=mysql
+      - DB_NAME=comment_rate_db
+      - DB_USER=root
+      - DB_PASSWORD=12345678
+    depends_on:
+      mysql:
+        condition: service_healthy
+    networks:
+      - bookstore06-network
+
+  # Recommender AI Service - Port 8011 (PostgreSQL)
+  recommender-ai-service:
+    build: ./recommender-ai-service
+    environment:
+      - BOOK_SERVICE_URL=http://book-service:8005
+      - ORDER_SERVICE_URL=http://order-service:8007
+      - COMMENT_RATE_SERVICE_URL=http://comment-rate-service:8010
+      - DB_HOST=postgres
+      - DB_NAME=recommender_db
+      - DB_USER=root
+      - DB_PASSWORD=12345678
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - bookstore06-network
+
+networks:
+  bookstore06-network:
+    driver: bridge
+
+volumes:
+  mysql_data:
+  postgres_data:

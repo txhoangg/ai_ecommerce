@@ -1,0 +1,61 @@
+{% extends 'base.html' %}
+
+{% block title %}Order #{{ order.id }} - Bookstore{% endblock %}
+
+{% block content %}
+<h2>Order #{{ order.id }}</h2>
+
+<div class="row">
+    <div class="col-md-8">
+        <div class="card mb-3">
+            <div class="card-header"><h5>Order Items</h5></div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Book Title</th>
+                                <th>Quantity</th>
+                                <th>Price</th>
+                                <th>Subtotal</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for item in order.items %}
+                            <tr>
+                                <td>
+                                    <strong>{{ item.book_title }}</strong><br>
+                                    <small class="text-muted" style="font-size: 0.75rem;">ID: {{ item.book_id }}</small>
+                                </td>
+                                <td>{{ item.quantity }}</td>
+                                <td>${{ item.price|floatformat:2 }}</td>
+                                <td>${{ item.subtotal|floatformat:2 }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="card mb-3">
+            <div class="card-header"><h5>Order Summary</h5></div>
+            <div class="card-body">
+                <p><strong>Order Date:</strong> {{ order.created_at|date:"F d, Y H:i" }}</p>
+                <p><strong>Status:</strong> <span class="badge bg-info">{{ order.status }}</span></p>
+                <p><strong>Total Amount:</strong> ${{ order.total_amount|floatformat:2 }}</p>
+                {% if order.discount_amount %}
+                <p><strong>Discount:</strong> -${{ order.discount_amount|floatformat:2 }}</p>
+                {% endif %}
+                <p><strong>Final Amount:</strong> ${{ order.final_amount|floatformat:2 }}</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="mt-2">
+    <a href="/orders/" class="btn btn-secondary">Back to Orders</a>
+</div>
+{% endblock %}

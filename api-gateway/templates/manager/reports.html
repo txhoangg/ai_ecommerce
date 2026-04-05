@@ -1,0 +1,39 @@
+{% extends 'base.html' %}
+
+{% block title %}Reports - Bookstore{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2>Business Reports</h2>
+    <a href="/manager/dashboard/" class="btn btn-secondary">Back to Dashboard</a>
+</div>
+
+{% if reports %}
+<div class="table-responsive">
+    <table class="table table-bordered table-hover">
+        <thead class="table-dark">
+            <tr>
+                <th>ID</th>
+                <th>Title</th>
+                <th>Type</th>
+                <th>Date Range</th>
+                <th>Created</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for report in reports %}
+            <tr>
+                <td>{{ report.id }}</td>
+                <td>{{ report.title }}</td>
+                <td><span class="badge bg-info">{{ report.report_type }}</span></td>
+                <td>{{ report.start_date }} to {{ report.end_date }}</td>
+                <td>{{ report.created_at|date:"Y-m-d" }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% else %}
+<div class="alert alert-info">No reports available.</div>
+{% endif %}
+{% endblock %}
