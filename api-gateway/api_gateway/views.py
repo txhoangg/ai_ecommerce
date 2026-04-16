@@ -8,8 +8,10 @@ import datetime
 from django.conf import settings
 from django.http import JsonResponse
 import json
+import logging
 
 SHARED_SECRET = "super-secret-jwt-key"
+logger = logging.getLogger('api_gateway')
 
 def generate_jwt(user_id, role):
     payload = {
@@ -59,16 +61,81 @@ def get_session_context(request):
     }
 
 
+def unwrap_results(payload):
+    if isinstance(payload, dict):
+        results = payload.get('results')
+        if isinstance(results, list):
+            return results
+    return payload if isinstance(payload, list) else []
+
+
+def fetch_all_paginated_results(request, base_url, page_size=100):
+    items = []
+    page = 1
+
+    while True:
+        separator = '&' if '?' in base_url else '?'
+        payload = api_call(
+            request,
+            'GET',
+            f"{base_url}{separator}page={page}&page_size={page_size}",
+        )
+
+        if isinstance(payload, list):
+            return payload
+        if not isinstance(payload, dict):
+            return []
+
+        results = payload.get('results')
+        if not isinstance(results, list):
+            return []
+
+        items.extend(results)
+
+        total_pages = int(payload.get('total_pages') or 1)
+        if page >= total_pages or not results:
+            break
+        page += 1
+
+    return items
+
+
+def unwrap_ai_books(payload):
+    if isinstance(payload, dict):
+        books = payload.get('books')
+        if isinstance(books, list):
+            return books
+        suggestions = payload.get('suggested_books')
+        if isinstance(suggestions, list):
+            return suggestions
+    return payload if isinstance(payload, list) else []
+
+
+def log_ai_interaction(request, book_id, event_type):
+    if not book_id or 'customer' not in request.session:
+        return
+
+    api_call(
+        request,
+        'POST',
+        f"{settings.AI_SERVICE_URL}/api/graph/interaction/",
+        {
+            'user_id': request.session['customer']['id'],
+            'book_id': int(book_id),
+            'event_type': event_type,
+        },
+        timeout=3,
+    )
+
+
 # Home page
 def home(request):
-    # Get popular books from recommender service
-    popular_books = api_call(request, 'GET', f"{settings.RECOMMENDER_SERVICE_URL}/api/recommendations/popular/?limit=8")
-    
-    # Get all books if popular books not available
+    trending = api_call(request, 'GET', f"{settings.AI_SERVICE_URL}/api/behavior/trending/?limit=8")
+    popular_books = unwrap_ai_books(trending)
+
     if not popular_books:
-        popular_books = api_call(request, 'GET', f"{settings.BOOK_SERVICE_URL}/api/books/")
-        if popular_books:
-            popular_books = popular_books[:8]
+        raw = api_call(request, 'GET', f"{settings.PRODUCT_SERVICE_URL}/products/?page_size=8")
+        popular_books = unwrap_results(raw)[:8]
     
     context = get_session_context(request)
     context['popular_books'] = popular_books or []
@@ -225,14 +292,19 @@ def staff_dashboard(request):
     staff = request.session['staff']
     
     # Get statistics
-    books = api_call(request, 'GET', f"{settings.BOOK_SERVICE_URL}/api/books/")
+    books_list = fetch_all_paginated_results(
+        request,
+        f"{settings.PRODUCT_SERVICE_URL}/products/",
+        page_size=100,
+    )
     orders = api_call(request, 'GET', f"{settings.ORDER_SERVICE_URL}/api/orders/")
-    
+    orders_list = orders if isinstance(orders, list) else []
+
     context = get_session_context(request)
     context.update({
-        'total_books': len(books) if books else 0,
-        'total_orders': len(orders) if orders else 0,
-        'low_stock_books': [b for b in (books or []) if b.get('stock', 0) < 10],
+        'total_books': len(books_list),
+        'total_orders': len(orders_list),
+        'low_stock_books': [b for b in books_list if b.get('stock', 0) < 10],
     })
     return render(request, 'staff/dashboard.html', context)
 
@@ -243,8 +315,12 @@ def staff_books(request):
         messages.error(request, 'Please login first.')
         return redirect('login')
     
-    books = api_call(request, 'GET', f"{settings.BOOK_SERVICE_URL}/api/books/")
-    categories = api_call(request, 'GET', f"{settings.CATALOG_SERVICE_URL}/api/categories/")
+    books = fetch_all_paginated_results(
+        request,
+        f"{settings.PRODUCT_SERVICE_URL}/products/",
+        page_size=100,
+    )
+    categories = api_call(request, 'GET', f"{settings.PRODUCT_SERVICE_URL}/categories/")
     
     context = get_session_context(request)
     context.update({'books': books or [], 'categories': categories or []})
@@ -261,14 +337,14 @@ def staff_add_book(request):
         data = {
             'title': request.POST.get('title'),
             'author': request.POST.get('author'),
-            'price': float(request.POST.get('price')),
+            'book_type_key': request.POST.get('book_type_key'),
+            'price': int(request.POST.get('price')),
             'stock': int(request.POST.get('stock')),
             'description': request.POST.get('description', ''),
             'category_id': int(request.POST.get('category_id')) if request.POST.get('category_id') else None,
-            'staff_id': request.session['staff']['id'],
         }
         
-        result = api_call(request, 'POST', f"{settings.BOOK_SERVICE_URL}/api/books/", data)
+        result = api_call(request, 'POST', f"{settings.PRODUCT_SERVICE_URL}/products/", data)
         
         if result:
             messages.success(request, 'Book added successfully!')
@@ -276,10 +352,12 @@ def staff_add_book(request):
         else:
             messages.error(request, 'Failed to add book.')
     
-    categories = api_call(request, 'GET', f"{settings.CATALOG_SERVICE_URL}/api/categories/")
+    categories = api_call(request, 'GET', f"{settings.PRODUCT_SERVICE_URL}/categories/")
+    book_types = api_call(request, 'GET', f"{settings.PRODUCT_SERVICE_URL}/products/types/")
     
     context = get_session_context(request)
     context['categories'] = categories or []
+    context['book_types'] = book_types or []
     return render(request, 'staff/add_book.html', context)
 
 
@@ -289,7 +367,7 @@ def staff_edit_book(request, book_id):
         messages.error(request, 'Please login first.')
         return redirect('login')
     
-    book = api_call(request, 'GET', f"{settings.BOOK_SERVICE_URL}/api/books/{book_id}/")
+    book = api_call(request, 'GET', f"{settings.PRODUCT_SERVICE_URL}/products/{book_id}/")
     
     if not book:
         messages.error(request, 'Book not found.')
@@ -299,13 +377,14 @@ def staff_edit_book(request, book_id):
         data = {
             'title': request.POST.get('title'),
             'author': request.POST.get('author'),
-            'price': float(request.POST.get('price')),
+            'book_type_key': request.POST.get('book_type_key'),
+            'price': int(request.POST.get('price')),
             'stock': int(request.POST.get('stock')),
             'description': request.POST.get('description', ''),
             'category_id': int(request.POST.get('category_id')) if request.POST.get('category_id') else None,
         }
         
-        result = api_call(request, 'PUT', f"{settings.BOOK_SERVICE_URL}/api/books/{book_id}/", data)
+        result = api_call(request, 'PUT', f"{settings.PRODUCT_SERVICE_URL}/products/{book_id}/", data)
         
         if result:
             messages.success(request, 'Book updated successfully!')
@@ -313,10 +392,11 @@ def staff_edit_book(request, book_id):
         else:
             messages.error(request, 'Failed to update book.')
     
-    categories = api_call(request, 'GET', f"{settings.CATALOG_SERVICE_URL}/api/categories/")
+    categories = api_call(request, 'GET', f"{settings.PRODUCT_SERVICE_URL}/categories/")
+    book_types = api_call(request, 'GET', f"{settings.PRODUCT_SERVICE_URL}/products/types/")
     
     context = get_session_context(request)
-    context.update({'book': book, 'categories': categories or []})
+    context.update({'book': book, 'categories': categories or [], 'book_types': book_types or []})
     return render(request, 'staff/edit_book.html', context)
 
 
@@ -327,7 +407,7 @@ def staff_delete_book(request, book_id):
         return redirect('login')
 
     if request.method == 'POST':
-        result = api_call(request, 'DELETE', f"{settings.BOOK_SERVICE_URL}/api/books/{book_id}/")
+        result = api_call(request, 'DELETE', f"{settings.PRODUCT_SERVICE_URL}/products/{book_id}/")
 
         if result:
             messages.success(request, 'Book deleted successfully!')
@@ -448,15 +528,21 @@ def book_list(request):
     category_id = request.GET.get('category', '')
     page_number = request.GET.get('page', 1)
     
-    books = api_call(request, 'GET', f"{settings.BOOK_SERVICE_URL}/api/books/")
-    categories = api_call(request, 'GET', f"{settings.CATALOG_SERVICE_URL}/api/categories/")
-    
+    books = fetch_all_paginated_results(
+        request,
+        f"{settings.PRODUCT_SERVICE_URL}/products/",
+        page_size=100,
+    )
+    raw_cats = api_call(request, 'GET', f"{settings.PRODUCT_SERVICE_URL}/categories/")
+    categories = raw_cats.get('results', raw_cats) if isinstance(raw_cats, dict) else (raw_cats or [])
+
     # Filter books
     if books:
         if query:
-            books = [b for b in books if query.lower() in b.get('title', '').lower() or query.lower() in b.get('author', '').lower()]
+            q = query.lower()
+            books = [b for b in books if q in (b.get('title') or '').lower() or q in (b.get('author') or '').lower() or q in (b.get('publisher_name') or '').lower()]
         if category_id:
-            books = [b for b in books if b.get('category_id') == int(category_id)]
+            books = [b for b in books if b.get('category_name', '') == category_id]
     
     paginator = Paginator(books or [], 12)
     page_obj = paginator.get_page(page_number)
@@ -473,11 +559,13 @@ def book_list(request):
 
 # Book detail
 def book_detail(request, book_id):
-    book = api_call(request, 'GET', f"{settings.BOOK_SERVICE_URL}/api/books/{book_id}/")
+    book = api_call(request, 'GET', f"{settings.PRODUCT_SERVICE_URL}/products/{book_id}/")
     
     if not book:
         messages.error(request, 'Book not found.')
         return redirect('book_list')
+
+    log_ai_interaction(request, book_id, 'view')
     
     # Get ratings and reviews
     ratings = api_call(request, 'GET', f"{settings.COMMENT_RATE_SERVICE_URL}/api/ratings/book/{book_id}/")
@@ -542,6 +630,7 @@ def rate_and_review_book(request, book_id):
             }
             if api_call(request, 'POST', f"{settings.COMMENT_RATE_SERVICE_URL}/api/ratings/", data):
                 success.append("rating")
+                log_ai_interaction(request, book_id, 'rate')
             else:
                 fails.append("rating")
                 
@@ -570,14 +659,54 @@ def rate_and_review_book(request, book_id):
 # Book recommendations
 def book_recommendations(request):
     if 'customer' not in request.session:
-        # Show popular books for non-logged-in users
-        recommendations = api_call(request, 'GET', f"{settings.RECOMMENDER_SERVICE_URL}/api/recommendations/popular/?limit=12")
-        rec_source = 'popular'
+        recommendations = unwrap_ai_books(
+            api_call(request, 'GET', f"{settings.AI_SERVICE_URL}/api/behavior/trending/?limit=12")
+        )
+        rec_source = 'trending'
+
+        if not recommendations:
+            recommendations = unwrap_ai_books(
+                api_call(request, 'GET', f"{settings.AI_SERVICE_URL}/api/recommend/new-arrivals/?limit=12")
+            )
+            rec_source = 'new_arrivals'
+
+        if not recommendations:
+            recommendations = unwrap_results(
+                api_call(request, 'GET', f"{settings.PRODUCT_SERVICE_URL}/products/?page_size=12")
+            )
+            rec_source = 'latest_products'
     else:
         customer_id = request.session['customer']['id']
+        recommendations = unwrap_ai_books(
+            api_call(request, 'GET', f"{settings.AI_SERVICE_URL}/api/recommend/{customer_id}/?limit=12")
+        )
+        rec_source = 'personalized'
+
+        if not recommendations:
+            recommendations = unwrap_ai_books(
+                api_call(request, 'GET', f"{settings.AI_SERVICE_URL}/api/recommend/new-arrivals/?limit=12")
+            )
+            rec_source = 'new_arrivals'
+
+        if not recommendations:
+            recommendations = unwrap_ai_books(
+                api_call(request, 'GET', f"{settings.AI_SERVICE_URL}/api/behavior/trending/?limit=12")
+            )
+            rec_source = 'trending'
+
+        if not recommendations:
+            recommendations = unwrap_results(
+                api_call(request, 'GET', f"{settings.PRODUCT_SERVICE_URL}/products/?page_size=12")
+            )
+            rec_source = 'latest_products'
+
+        context = get_session_context(request)
+        context['recommendations'] = recommendations or []
+        context['rec_source'] = rec_source
+        return render(request, 'books/recommendations.html', context)
 
         # Try NCF deep learning model first
-        ncf_data = api_call(request, 'GET', f"{settings.RECOMMENDER_SERVICE_URL}/api/ai/model/recommend/{customer_id}/?limit=12")
+        ncf_data = None
         if ncf_data and isinstance(ncf_data, dict) and ncf_data.get('recommendations'):
             # NCF model returned results — reformat to match template expectations
             recommendations = []
@@ -589,8 +718,7 @@ def book_recommendations(request):
             rec_source = 'ncf_model'
         else:
             # Fallback: use hybrid collaborative-content algorithm
-            api_call(request, 'POST', f"{settings.RECOMMENDER_SERVICE_URL}/api/recommendations/generate/", {'customer_id': customer_id, 'limit': 12})
-            rec_result = api_call(request, 'GET', f"{settings.RECOMMENDER_SERVICE_URL}/api/recommendations/{customer_id}/")
+            rec_result = []
             recommendations = rec_result or []
             rec_source = 'hybrid'
 
@@ -612,7 +740,7 @@ def cart_view(request):
     # Enrich cart items with book titles
     if cart and cart.get('items'):
         for item in cart['items']:
-            book = api_call(request, 'GET', f"{settings.BOOK_SERVICE_URL}/api/books/{item['book_id']}/")
+            book = api_call(request, 'GET', f"{settings.PRODUCT_SERVICE_URL}/products/{item['book_id']}/")
             item['book_title'] = book['title'] if book else f"Book #{item['book_id']}"
 
     context = get_session_context(request)
@@ -635,8 +763,9 @@ def cart_add(request, book_id):
     result = api_call(request, 'POST', f"{settings.CART_SERVICE_URL}/api/cart-items/", data)
 
     if result:
-        book = api_call(request, 'GET', f"{settings.BOOK_SERVICE_URL}/api/books/{book_id}/")
+        book = api_call(request, 'GET', f"{settings.PRODUCT_SERVICE_URL}/products/{book_id}/")
         book_title = book.get('title') if book else f"Book #{book_id}"
+        log_ai_interaction(request, book_id, 'add_to_cart')
         messages.success(request, f'"{book_title}" added to cart!')
     else:
         messages.error(request, 'Failed to add book to cart.')
@@ -719,7 +848,7 @@ def order_detail(request, order_id):
     # Enrich order items with book titles
     if order and order.get('items'):
         for item in order['items']:
-            book = api_call(request, 'GET', f"{settings.BOOK_SERVICE_URL}/api/books/{item['book_id']}/")
+            book = api_call(request, 'GET', f"{settings.PRODUCT_SERVICE_URL}/products/{item['book_id']}/")
             item['book_title'] = book['title'] if book else f"Book #{item['book_id']}"
     
     context = get_session_context(request)
@@ -758,7 +887,7 @@ def checkout(request):
     # Enrich cart items with book titles
     if cart and cart.get('items'):
         for item in cart['items']:
-            book = api_call(request, 'GET', f"{settings.BOOK_SERVICE_URL}/api/books/{item['book_id']}/")
+            book = api_call(request, 'GET', f"{settings.PRODUCT_SERVICE_URL}/products/{item['book_id']}/")
             item['book_title'] = book['title'] if book else f"Book #{item['book_id']}"
 
     context = get_session_context(request)
@@ -774,7 +903,7 @@ def chat_page(request):
 
 @csrf_exempt
 def chat_api(request):
-    """Proxy chat POST request to recommender-ai-service"""
+    """Proxy chat POST request to ai-service"""
     import json as _json
     if request.method != 'POST':
         return JsonResponse({'error': 'POST required'}, status=405)
@@ -787,6 +916,7 @@ def chat_api(request):
     customer = request.session.get('customer')
     if customer:
         body['customer_id'] = customer.get('id')
+        body['user_id'] = customer.get('id')
 
     session_id = request.session.get('chat_session_id')
     if not session_id:
@@ -795,15 +925,24 @@ def chat_api(request):
         request.session['chat_session_id'] = session_id
     body['session_id'] = session_id
 
+    chat_timeout = max(int(getattr(settings, 'AI_CHAT_TIMEOUT_SECONDS', 15)), 1)
     try:
         resp = requests.post(
-            f"{settings.RECOMMENDER_SERVICE_URL}/api/ai/chat/",
+            f"{settings.AI_SERVICE_URL}/api/rag/chat/",
             json=body,
-            timeout=30
+            timeout=chat_timeout
         )
         return JsonResponse(resp.json(), status=resp.status_code)
     except Exception as e:
-        return JsonResponse({'error': str(e), 'response': 'Xin lỗi, dịch vụ chat đang không khả dụng.'}, status=503)
+        logger.warning("Chat proxy fallback activated: %s", e)
+        return JsonResponse(
+            {
+                'answer': 'Dịch vụ chat đang bận hoặc phản hồi chậm. Vui lòng thử lại sau ít giây.',
+                'suggested_books': [],
+                'fallback': True,
+            },
+            status=200,
+        )
 
 
 # Validate discount

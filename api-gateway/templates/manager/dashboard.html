@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load currency_filters %}
 
 {% block title %}Manager Dashboard - Bookstore{% endblock %}
 
@@ -19,7 +20,7 @@
             </div>
             <div class="card-body">
                 <p><strong>Total Orders:</strong> <span class="text-primary">{{ sales_report.total_orders|default:"N/A" }}</span></p>
-                <p><strong>Total Revenue:</strong> <span class="text-success">${{ sales_report.total_revenue|default:"0"|floatformat:2 }}</span></p>
+                <p><strong>Total Revenue:</strong> <span class="text-success">{{ sales_report.total_revenue|default:"0"|vnd }}</span></p>
             </div>
         </div>
     </div>

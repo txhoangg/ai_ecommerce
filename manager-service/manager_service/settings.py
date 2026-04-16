@@ -119,7 +119,7 @@ REST_FRAMEWORK = {
         'app.jwt_auth.JWTAuthentication',
     ],
     'DEFAULT_PERMISSION_CLASSES': [
-        'rest_framework.permissions.IsAuthenticatedOrReadOnly',
+        'rest_framework.permissions.AllowAny',
     ],
     'DEFAULT_RENDERER_CLASSES': [
         'rest_framework.renderers.JSONRenderer',
@@ -133,6 +133,6 @@ REST_FRAMEWORK = {
 # Inter-service URLs
 STAFF_SERVICE_URL = 'http://staff-service:8001'
 CUSTOMER_SERVICE_URL = 'http://customer-service:8003'
-BOOK_SERVICE_URL = 'http://book-service:8005'
+PRODUCT_SERVICE_URL = os.getenv('PRODUCT_SERVICE_URL', 'http://product-service:8012')
 ORDER_SERVICE_URL = 'http://order-service:8007'
 COMMENT_RATE_SERVICE_URL = 'http://comment-rate-service:8010'

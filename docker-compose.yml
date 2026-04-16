@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   # ─── Databases ────────────────────────────────────────────────────────────────
 
@@ -40,6 +38,26 @@ services:
       timeout: 5s
       retries: 10
 
+  neo4j:
+    image: neo4j:5.15-community
+    environment:
+      NEO4J_AUTH: neo4j/password123
+      NEO4J_PLUGINS: '["apoc"]'
+      NEO4J_dbms_security_procedures_unrestricted: apoc.*
+    ports:
+      - "7474:7474"
+      - "7687:7687"
+    volumes:
+      - neo4j_data:/data
+    networks:
+      - bookstore06-network
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:7474 || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 20
+      start_period: 90s
+
   # ─── Message Broker ───────────────────────────────────────────────────────────
 
   rabbitmq:
@@ -69,14 +87,13 @@ services:
       - STAFF_SERVICE_URL=http://staff-service:8001
       - MANAGER_SERVICE_URL=http://manager-service:8002
       - CUSTOMER_SERVICE_URL=http://customer-service:8003
-      - CATALOG_SERVICE_URL=http://catalog-service:8004
-      - BOOK_SERVICE_URL=http://book-service:8005
+      - PRODUCT_SERVICE_URL=http://product-service:8012
       - CART_SERVICE_URL=http://cart-service:8006
       - ORDER_SERVICE_URL=http://order-service:8007
       - SHIP_SERVICE_URL=http://ship-service:8008
       - PAY_SERVICE_URL=http://pay-service:8009
       - COMMENT_RATE_SERVICE_URL=http://comment-rate-service:8010
-      - RECOMMENDER_SERVICE_URL=http://recommender-ai-service:8011
+      - AI_SERVICE_URL=http://ai-service:8013
       - DB_HOST=mysql
       - DB_NAME=apigateway_db
       - DB_USER=root
@@ -107,7 +124,7 @@ services:
     environment:
       - STAFF_SERVICE_URL=http://staff-service:8001
       - CUSTOMER_SERVICE_URL=http://customer-service:8003
-      - BOOK_SERVICE_URL=http://book-service:8005
+      - PRODUCT_SERVICE_URL=http://product-service:8012
       - ORDER_SERVICE_URL=http://order-service:8007
       - COMMENT_RATE_SERVICE_URL=http://comment-rate-service:8010
       - DB_HOST=postgres
@@ -135,43 +152,11 @@ services:
     networks:
       - bookstore06-network
 
-  # Catalog Service - Port 8004 (MySQL)
-  catalog-service:
-    build: ./catalog-service
-    environment:
-      - DB_HOST=mysql
-      - DB_NAME=catalog_db
-      - DB_USER=root
-      - DB_PASSWORD=12345678
-    depends_on:
-      mysql:
-        condition: service_healthy
-    networks:
-      - bookstore06-network
-
-  # Book Service - Port 8005 (PostgreSQL)
-  book-service:
-    build: ./book-service
-    environment:
-      - STAFF_SERVICE_URL=http://staff-service:8001
-      - CATALOG_SERVICE_URL=http://catalog-service:8004
-      - DB_HOST=postgres
-      - DB_NAME=book_db
-      - DB_USER=root
-      - DB_PASSWORD=12345678
-    depends_on:
-      postgres:
-        condition: service_healthy
-      rabbitmq:
-        condition: service_healthy
-    networks:
-      - bookstore06-network
-
   # Cart Service - Port 8006 (MySQL)
   cart-service:
     build: ./cart-service
     environment:
-      - BOOK_SERVICE_URL=http://book-service:8005
+      - PRODUCT_SERVICE_URL=http://product-service:8012
       - DB_HOST=mysql
       - DB_NAME=cart_db
       - DB_USER=root
@@ -187,9 +172,10 @@ services:
     build: ./order-service
     environment:
       - CART_SERVICE_URL=http://cart-service:8006
-      - BOOK_SERVICE_URL=http://book-service:8005
+      - PRODUCT_SERVICE_URL=http://product-service:8012
       - PAY_SERVICE_URL=http://pay-service:8009
       - SHIP_SERVICE_URL=http://ship-service:8008
+      - AI_SERVICE_URL=http://ai-service:8013
       - DB_HOST=postgres
       - DB_NAME=order_db
       - DB_USER=root
@@ -238,7 +224,7 @@ services:
   comment-rate-service:
     build: ./comment-rate-service
     environment:
-      - BOOK_SERVICE_URL=http://book-service:8005
+      - PRODUCT_SERVICE_URL=http://product-service:8012
       - DB_HOST=mysql
       - DB_NAME=comment_rate_db
       - DB_USER=root
@@ -249,22 +235,55 @@ services:
     networks:
       - bookstore06-network
 
-  # Recommender AI Service - Port 8011 (PostgreSQL)
-  recommender-ai-service:
-    build: ./recommender-ai-service
+  # ─── NEW: Product Service (DDD) - Port 8012 (PostgreSQL) ─────────────────────
+  product-service:
+    build: ./product-service
     environment:
-      - BOOK_SERVICE_URL=http://book-service:8005
-      - ORDER_SERVICE_URL=http://order-service:8007
-      - COMMENT_RATE_SERVICE_URL=http://comment-rate-service:8010
       - DB_HOST=postgres
-      - DB_NAME=recommender_db
+      - DB_NAME=product_db
       - DB_USER=root
       - DB_PASSWORD=12345678
+      - AI_SERVICE_URL=http://ai-service:8013
     depends_on:
       postgres:
         condition: service_healthy
     networks:
       - bookstore06-network
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8012/health/')\""]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+
+  # ─── NEW: AI Service - Port 8013 ─────────────────────────────────────────────
+  ai-service:
+    build: ./ai-service
+    environment:
+      - DB_HOST=postgres
+      - DB_NAME=ai_db
+      - DB_USER=root
+      - DB_PASSWORD=12345678
+      - NEO4J_URI=bolt://neo4j:7687
+      - NEO4J_USER=neo4j
+      - NEO4J_PASSWORD=password123
+      - GEMINI_API_KEY=${GEMINI_API_KEY:-}
+      - PRODUCT_SERVICE_URL=http://product-service:8012
+    depends_on:
+      postgres:
+        condition: service_healthy
+      neo4j:
+        condition: service_healthy
+      product-service:
+        condition: service_healthy
+    networks:
+      - bookstore06-network
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8013/health/')\""]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
 
 networks:
   bookstore06-network:
@@ -273,3 +292,4 @@ networks:
 volumes:
   mysql_data:
   postgres_data:
+  neo4j_data:

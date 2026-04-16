@@ -22,7 +22,7 @@ class Cart(models.Model):
 class CartItem(models.Model):
     """Items in shopping cart"""
     cart = models.ForeignKey(Cart, on_delete=models.CASCADE, related_name='items')
-    book_id = models.IntegerField()  # Reference to book-service
+    book_id = models.IntegerField()  # Reference to product-service
     quantity = models.IntegerField(default=1)
     price = models.DecimalField(max_digits=10, decimal_places=2)  # Cached price at time of adding
     added_at = models.DateTimeField(auto_now_add=True)

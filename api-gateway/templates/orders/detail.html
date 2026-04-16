@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load currency_filters %}
 
 {% block title %}Order #{{ order.id }} - Bookstore{% endblock %}
 
@@ -28,8 +29,8 @@
                                     <small class="text-muted" style="font-size: 0.75rem;">ID: {{ item.book_id }}</small>
                                 </td>
                                 <td>{{ item.quantity }}</td>
-                                <td>${{ item.price|floatformat:2 }}</td>
-                                <td>${{ item.subtotal|floatformat:2 }}</td>
+                                <td>{{ item.price|vnd }}</td>
+                                <td>{{ item.subtotal|vnd }}</td>
                             </tr>
                             {% endfor %}
                         </tbody>
@@ -45,11 +46,11 @@
             <div class="card-body">
                 <p><strong>Order Date:</strong> {{ order.created_at|date:"F d, Y H:i" }}</p>
                 <p><strong>Status:</strong> <span class="badge bg-info">{{ order.status }}</span></p>
-                <p><strong>Total Amount:</strong> ${{ order.total_amount|floatformat:2 }}</p>
+                <p><strong>Total Amount:</strong> {{ order.total_amount|vnd }}</p>
                 {% if order.discount_amount %}
-                <p><strong>Discount:</strong> -${{ order.discount_amount|floatformat:2 }}</p>
+                <p><strong>Discount:</strong> -{{ order.discount_amount|vnd }}</p>
                 {% endif %}
-                <p><strong>Final Amount:</strong> ${{ order.final_amount|floatformat:2 }}</p>
+                <p><strong>Final Amount:</strong> {{ order.final_amount|vnd }}</p>
             </div>
         </div>
     </div>

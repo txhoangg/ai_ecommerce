@@ -1,12 +1,52 @@
+import datetime
 import pika
 import json
 import logging
 import time
 import requests
+import jwt
 from django.conf import settings
 from app.rabbitmq import publish_command
 
 logger = logging.getLogger(__name__)
+
+SHARED_SECRET = "super-secret-jwt-key"
+
+
+def _service_headers():
+    payload = {
+        'sub': 'order-service',
+        'role': 'service',
+        'exp': datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(minutes=15),
+    }
+    token = jwt.encode(payload, SHARED_SECRET, algorithm='HS256')
+    return {
+        'Authorization': f'Bearer {token}',
+        'Content-Type': 'application/json',
+    }
+
+
+def _log_purchase_interactions(customer_id, items):
+    if not customer_id:
+        return
+
+    for item in items or []:
+        book_id = item.get('book_id')
+        if not book_id:
+            continue
+        try:
+            requests.post(
+                f"{settings.AI_SERVICE_URL}/api/graph/interaction/",
+                json={
+                    'user_id': int(customer_id),
+                    'book_id': int(book_id),
+                    'event_type': 'purchase',
+                },
+                headers=_service_headers(),
+                timeout=5,
+            )
+        except Exception as e:
+            print(f"[Order Orchestrator] Warning: could not log purchase interaction: {e}")
 
 
 def callback(ch, method, properties, body):
@@ -55,6 +95,7 @@ def callback(ch, method, properties, body):
 
                 # NOW it is safe to clear the cart (Saga fully succeeded)
                 customer_id = payload.get('customer_id')
+                _log_purchase_interactions(customer_id, payload.get('items', []))
                 if customer_id:
                     try:
                         requests.delete(

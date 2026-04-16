@@ -34,7 +34,7 @@ class Order(models.Model):
 class OrderItem(models.Model):
     """Order items"""
     order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name='items')
-    book_id = models.IntegerField()  # Reference to book-service
+    book_id = models.IntegerField()  # Reference to product-service
     quantity = models.IntegerField()
     price = models.DecimalField(max_digits=10, decimal_places=2)  # Price at time of order
     

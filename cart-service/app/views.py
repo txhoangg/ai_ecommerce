@@ -80,10 +80,10 @@ class CartItemAdd(APIView):
             is_active=True
         )
         
-        # Verify book exists and get price from book-service
+        # Verify book exists and get price from product-service
         try:
             book_response = requests.get(
-                f"{settings.BOOK_SERVICE_URL}/api/books/{book_id}/",
+                f"{settings.PRODUCT_SERVICE_URL}/products/{book_id}/",
                 timeout=5
             )
             
@@ -162,7 +162,7 @@ class CartItemUpdate(APIView):
         # Verify stock availability
         try:
             book_response = requests.get(
-                f"{settings.BOOK_SERVICE_URL}/api/books/{cart_item.book_id}/",
+                f"{settings.PRODUCT_SERVICE_URL}/products/{cart_item.book_id}/",
                 timeout=5
             )
             

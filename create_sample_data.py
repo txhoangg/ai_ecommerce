@@ -27,8 +27,7 @@ import os
 STAFF_SERVICE = os.getenv("STAFF_SERVICE_URL", "http://staff-service:8001")
 MANAGER_SERVICE = os.getenv("MANAGER_SERVICE_URL", "http://manager-service:8002")
 CUSTOMER_SERVICE = os.getenv("CUSTOMER_SERVICE_URL", "http://customer-service:8003")
-CATALOG_SERVICE = os.getenv("CATALOG_SERVICE_URL", "http://catalog-service:8004")
-BOOK_SERVICE = os.getenv("BOOK_SERVICE_URL", "http://book-service:8005")
+PRODUCT_SERVICE = os.getenv("PRODUCT_SERVICE_URL", "http://product-service:8012")
 CART_SERVICE = os.getenv("CART_SERVICE_URL", "http://cart-service:8006")
 ORDER_SERVICE = os.getenv("ORDER_SERVICE_URL", "http://order-service:8007")
 COMMENT_RATE_SERVICE = os.getenv("COMMENT_RATE_SERVICE_URL", "http://comment-rate-service:8010")
@@ -37,8 +36,8 @@ def wait_for_services():
     """Wait for all services to be ready"""
     print("Waiting for services to be ready...")
     services = [
-        STAFF_SERVICE, MANAGER_SERVICE, CUSTOMER_SERVICE, CATALOG_SERVICE,
-        BOOK_SERVICE, CART_SERVICE, ORDER_SERVICE, COMMENT_RATE_SERVICE
+        STAFF_SERVICE, MANAGER_SERVICE, CUSTOMER_SERVICE, PRODUCT_SERVICE,
+        CART_SERVICE, ORDER_SERVICE, COMMENT_RATE_SERVICE
     ]
 
     for service in services:
@@ -209,10 +208,11 @@ def create_books():
 
     # Skip if books already exist (idempotent — prevent duplicates on re-run)
     try:
-        check = requests.get(f"{BOOK_SERVICE}/api/books/", headers=AUTH_HEADERS)
+        check = requests.get(f"{PRODUCT_SERVICE}/products/?page_size=1000", headers=AUTH_HEADERS)
         if check.status_code == 200:
-            existing_books = check.json()
-            if len(existing_books) >= 50:
+            payload = check.json()
+            existing_books = payload.get('results', payload) if isinstance(payload, dict) else payload
+            if len(existing_books) >= 30:
                 print(f"  ~ Books already seeded ({len(existing_books)} found). Skipping.")
                 return [b['id'] for b in existing_books]
     except Exception:
@@ -253,16 +253,27 @@ def create_books():
     book_ids = []
     for book in book_data:
         try:
-            response = requests.post(f"{BOOK_SERVICE}/api/books/", json=book, headers=AUTH_HEADERS)
+            product_payload = {
+                "title": book["title"],
+                "author": book["author"],
+                "description": book["description"],
+                "price": book["price"],
+                "stock": book["stock"],
+                "isbn": book["isbn"],
+                "book_type_key": "fiction",
+            }
+            response = requests.post(f"{PRODUCT_SERVICE}/products/", json=product_payload, headers=AUTH_HEADERS)
             if response.status_code == 201:
                 book_id = response.json()['id']
                 book_ids.append(book_id)
                 print(f"  ✓ Created book: {book['title']} (ID: {book_id})")
             else:
                 # Already exists - fetch existing ID by ISBN
-                list_response = requests.get(f"{BOOK_SERVICE}/api/books/", headers=AUTH_HEADERS)
+                list_response = requests.get(f"{PRODUCT_SERVICE}/products/?page_size=1000", headers=AUTH_HEADERS)
                 if list_response.status_code == 200:
-                    existing = [b for b in list_response.json() if b.get('isbn') == book['isbn']]
+                    list_payload = list_response.json()
+                    existing_books = list_payload.get('results', list_payload) if isinstance(list_payload, dict) else list_payload
+                    existing = [b for b in existing_books if b.get('isbn') == book['isbn']]
                     if existing:
                         book_id = existing[0]['id']
                         book_ids.append(book_id)

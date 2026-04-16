@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load currency_filters %}
 
 {% block title %}Shopping Cart - Bookstore{% endblock %}
 
@@ -23,7 +24,7 @@
                         {% for item in cart.items %}
                         <tr>
                             <td><strong>{{ item.book_title }}</strong></td>
-                            <td>${{ item.price }}</td>
+                            <td>{{ item.price|vnd }}</td>
                             <td>
                                 <form method="post" action="/cart/update/{{ item.id }}/" class="d-flex align-items-center gap-2">
                                     {% csrf_token %}
@@ -31,7 +32,7 @@
                                     <button type="submit" class="btn btn-sm btn-outline-primary" title="Update"><i class="bi bi-arrow-clockwise"></i></button>
                                 </form>
                             </td>
-                            <td class="fw-bold">${{ item.subtotal|floatformat:2 }}</td>
+                            <td class="fw-bold">{{ item.subtotal|vnd }}</td>
                             <td>
                                 <form method="post" action="/cart/remove/{{ item.id }}/" class="d-inline">
                                     {% csrf_token %}
@@ -44,7 +45,7 @@
                     <tfoot style="background-color: var(--bg-tertiary);">
                         <tr>
                             <td colspan="3" class="text-end"><strong>Total:</strong></td>
-                            <td colspan="2" class="fs-5 text-primary"><strong>${{ cart.total|floatformat:2 }}</strong></td>
+                            <td colspan="2" class="fs-5 text-primary"><strong>{{ cart.total|vnd }}</strong></td>
                         </tr>
                     </tfoot>
                 </table>

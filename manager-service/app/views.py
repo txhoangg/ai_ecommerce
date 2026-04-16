@@ -12,6 +12,38 @@ from datetime import datetime
 from decimal import Decimal
 
 
+def fetch_all_products(page_size=500):
+    products = []
+    page = 1
+
+    while True:
+        response = requests.get(
+            f"{settings.PRODUCT_SERVICE_URL}/products/",
+            params={'page': page, 'page_size': page_size},
+            timeout=5,
+        )
+        if response.status_code != 200:
+            return None, response
+
+        payload = response.json()
+        if isinstance(payload, list):
+            return payload, response
+        if not isinstance(payload, dict):
+            return [], response
+
+        results = payload.get('results', [])
+        if not isinstance(results, list):
+            return [], response
+
+        products.extend(results)
+        total_pages = int(payload.get('total_pages') or 1)
+        if page >= total_pages or not results:
+            break
+        page += 1
+
+    return products, None
+
+
 class ManagerListCreate(APIView):
     """
     GET: List all managers
@@ -264,18 +296,13 @@ class InventoryReport(APIView):
     """
     
     def get(self, request):
-        # Get books from book-service
+        # Get books from product-service
         try:
-            books_response = requests.get(
-                f"{settings.BOOK_SERVICE_URL}/api/books/",
-                timeout=5
-            )
-            
-            if books_response.status_code != 200:
+            books, books_response = fetch_all_products()
+
+            if books is None:
                 return Response({'error': 'Failed to fetch books'}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
-            
-            books = books_response.json()
-            
+
             # Calculate statistics
             total_books = len(books)
             total_stock = sum(book.get('stock', 0) for book in books)
@@ -307,7 +334,7 @@ Low Stock Books (< 10):
             })
             
         except requests.exceptions.RequestException as e:
-            return Response({'error': f'Book service unavailable: {str(e)}'}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
+            return Response({'error': f'Product service unavailable: {str(e)}'}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
 
 
 class CustomerReport(APIView):

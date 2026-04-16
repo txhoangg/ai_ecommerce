@@ -28,14 +28,13 @@ def health(request):
         'staff-service': settings.STAFF_SERVICE_URL,
         'manager-service': settings.MANAGER_SERVICE_URL,
         'customer-service': settings.CUSTOMER_SERVICE_URL,
-        'catalog-service': settings.CATALOG_SERVICE_URL,
-        'book-service': settings.BOOK_SERVICE_URL,
+        'product-service': settings.PRODUCT_SERVICE_URL,
         'cart-service': settings.CART_SERVICE_URL,
         'order-service': settings.ORDER_SERVICE_URL,
         'ship-service': settings.SHIP_SERVICE_URL,
         'pay-service': settings.PAY_SERVICE_URL,
         'comment-rate-service': settings.COMMENT_RATE_SERVICE_URL,
-        'recommender-service': settings.RECOMMENDER_SERVICE_URL,
+        'ai-service': settings.AI_SERVICE_URL,
     }
 
     services_status = {}

@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load currency_filters %}
 
 {% block title %}Checkout - Bookstore{% endblock %}
 
@@ -55,7 +56,7 @@
                 {% for item in cart.items %}
                 <div class="d-flex justify-content-between mb-2">
                     <span class="text-truncate" style="max-width: 200px;">{{ item.book_title }} <small class="text-muted">x {{ item.quantity }}</small></span>
-                    <span>${{ item.subtotal|floatformat:2 }}</span>
+                    <span>{{ item.subtotal|vnd }}</span>
                 </div>
                 {% endfor %}
                 <hr>
@@ -71,16 +72,16 @@
 
                 <div class="d-flex justify-content-between">
                     <span>Subtotal:</span>
-                    <span id="subtotal_amount" data-total="{{ cart.total }}">${{ cart.total|floatformat:2 }}</span>
+                    <span id="subtotal_amount" data-total="{{ cart.total }}">{{ cart.total|vnd }}</span>
                 </div>
                 <div id="discount_row" class="d-flex justify-content-between text-success mt-1" style="display: none !important;">
                     <span>Discount applied:</span>
-                    <span id="discount_amount_display">-$0.00</span>
+                    <span id="discount_amount_display">-0đ</span>
                 </div>
                 <hr>
                 <div class="d-flex justify-content-between align-items-center">
                     <h5 class="mb-0">Total:</h5>
-                    <h4 class="mb-0 text-primary" id="final_total_display">${{ cart.total|floatformat:2 }}</h4>
+                    <h4 class="mb-0 text-primary" id="final_total_display">{{ cart.total|vnd }}</h4>
                 </div>
             </div>
         </div>
@@ -89,6 +90,11 @@
 
 <script>
     document.addEventListener("DOMContentLoaded", function() {
+        function formatVnd(amount) {
+            const rounded = Math.round(Number(amount) || 0);
+            return rounded.toLocaleString('vi-VN') + 'đ';
+        }
+
         const btnApply = document.getElementById("btn_apply_discount");
         const codeInput = document.getElementById("discount_code_input");
         const hiddenFinalCode = document.getElementById("hidden_discount_code");
@@ -123,14 +129,14 @@
                     hiddenFinalCode.value = code; // Pass code to the final form
                     
                     discountRow.style.setProperty('display', 'flex', 'important');
-                    discountAmtDisplay.textContent = "-$" + discountVal.toFixed(2);
-                    finalTotalDisplay.textContent = "$" + finalTotal.toFixed(2);
+                    discountAmtDisplay.textContent = "-" + formatVnd(discountVal);
+                    finalTotalDisplay.textContent = formatVnd(finalTotal);
                     
                     feedback.innerHTML = `<span class="text-success"><i class="bi bi-check-circle"></i> Discount applied! (${pct}%)</span>`;
                 } else {
                     hiddenFinalCode.value = "";
                     discountRow.style.setProperty('display', 'none', 'important');
-                    finalTotalDisplay.textContent = "$" + subtotal.toFixed(2);
+                    finalTotalDisplay.textContent = formatVnd(subtotal);
                     
                     feedback.innerHTML = `<span class="text-danger"><i class="bi bi-x-circle"></i> ${data.error}</span>`;
                 }

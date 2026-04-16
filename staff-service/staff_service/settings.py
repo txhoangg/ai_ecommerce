@@ -109,7 +109,7 @@ REST_FRAMEWORK = {
         'app.jwt_auth.JWTAuthentication',
     ],
     'DEFAULT_PERMISSION_CLASSES': [
-        'rest_framework.permissions.IsAuthenticatedOrReadOnly',
+        'rest_framework.permissions.AllowAny',
     ],
     'DEFAULT_RENDERER_CLASSES': [
         'rest_framework.renderers.JSONRenderer',
@@ -121,5 +121,4 @@ REST_FRAMEWORK = {
 }
 
 # Service URLs
-BOOK_SERVICE_URL = 'http://book-service:8005'
 ORDER_SERVICE_URL = 'http://order-service:8007'

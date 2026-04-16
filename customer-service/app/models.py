@@ -90,7 +90,7 @@ class Wishlist(models.Model):
 class WishlistItem(models.Model):
     """Items in wishlist"""
     wishlist = models.ForeignKey(Wishlist, on_delete=models.CASCADE, related_name='items')
-    book_id = models.IntegerField()  # Reference to book-service
+    book_id = models.IntegerField()  # Reference to product-service
     quantity = models.IntegerField(default=1)
     added_at = models.DateTimeField(auto_now_add=True)
 

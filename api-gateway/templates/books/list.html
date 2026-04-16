@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load currency_filters %}
 
 {% block title %}Books - Bookstore{% endblock %}
 
@@ -13,10 +14,10 @@
         </form>
     </div>
     <div class="col-md-4">
-        <select class="form-select" name="category" onchange="window.location.href='?category='+this.value">
+        <select class="form-select" name="category" onchange="window.location.href='?category='+encodeURIComponent(this.value)">
             <option value="">All Categories</option>
             {% for category in categories %}
-            <option value="{{ category.id }}" {% if selected_category == category.id|stringformat:"s" %}selected{% endif %}>{{ category.name }}</option>
+            <option value="{{ category.name }}" {% if selected_category == category.name %}selected{% endif %}>{{ category.name }}</option>
             {% endfor %}
         </select>
     </div>
@@ -34,14 +35,15 @@
             <div class="card-body">
                 <h5 class="card-title">{{ book.title }}</h5>
                 <p class="card-text">
-                    <strong>Author:</strong> {{ book.author }}<br>
-                    <strong>Price:</strong> ${{ book.price }}<br>
-                    <strong>Stock:</strong> {{ book.stock }}<br>
-                    <strong>Rating:</strong>
+                    <strong>Tác giả:</strong> {{ book.author|default:"—" }}<br>
+                    <strong>Thể loại:</strong> {{ book.book_type_name }}<br>
+                    <strong>Giá:</strong> {{ book.price|vnd }}<br>
+                    <strong>Kho:</strong> {{ book.stock }}<br>
+                    <strong>Đánh giá:</strong>
                     {% if book.average_rating %}
                         ⭐ {{ book.average_rating|floatformat:1 }}
                     {% else %}
-                        No ratings yet
+                        Chưa có đánh giá
                     {% endif %}
                 </p>
                 <a href="/books/{{ book.id }}/" class="btn btn-sm btn-info">View Details</a>

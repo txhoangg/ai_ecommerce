@@ -42,14 +42,14 @@
           </div>
           <div class="mt-2 d-flex flex-wrap gap-2">
             <small style="color:#888;width:100%;">📚 Sách:</small>
-            <button onclick="setInput('Gợi ý sách fantasy cho tôi')" class="btn btn-sm chip">🧙 Fantasy</button>
-            <button onclick="setInput('Gợi ý sách hay nhất hiện tại')" class="btn btn-sm chip">⭐ Sách hay nhất</button>
-            <button onclick="setInput('Sách rẻ dưới 20 USD')" class="btn btn-sm chip">💰 Sách rẻ</button>
-            <button onclick="setInput('Sách của J.K. Rowling')" class="btn btn-sm chip">✍️ J.K. Rowling</button>
-            <button onclick="setInput('Gợi ý sách khoa học viễn tưởng')" class="btn btn-sm chip">🚀 Sci-Fi</button>
-            <button onclick="setInput('Sách của George Orwell')" class="btn btn-sm chip">📖 George Orwell</button>
-            <button onclick="setInput('Gợi ý sách mystery trinh thám')" class="btn btn-sm chip">🔍 Mystery</button>
-            <button onclick="setInput('Sách giá trên 25 USD')" class="btn btn-sm chip">💎 Sách cao cấp</button>
+            <button onclick="setInput('Gợi ý truyện thiếu nhi hay')" class="btn btn-sm chip">🧒 Thiếu nhi</button>
+            <button onclick="setInput('Gợi ý sách nổi bật hiện có')" class="btn btn-sm chip">⭐ Sách nổi bật</button>
+            <button onclick="setInput('Sách dưới 50.000đ')" class="btn btn-sm chip">💰 Dưới 50k</button>
+            <button onclick="setInput('Sách của Nguyễn Nhật Ánh')" class="btn btn-sm chip">✍️ Nguyễn Nhật Ánh</button>
+            <button onclick="setInput('Gợi ý sách khoa học dễ đọc')" class="btn btn-sm chip">🔬 Khoa học</button>
+            <button onclick="setInput('Sách của Dale Carnegie')" class="btn btn-sm chip">💡 Dale Carnegie</button>
+            <button onclick="setInput('Gợi ý truyện trinh thám')" class="btn btn-sm chip">🕵️ Trinh thám</button>
+            <button onclick="setInput('Sách trên 200.000đ')" class="btn btn-sm chip">💎 Trên 200k</button>
             <small style="color:#888;width:100%;margin-top:4px;">🛎️ Dịch vụ:</small>
             <button onclick="setInput('Phí và thời gian giao hàng như thế nào?')" class="btn btn-sm chip">🚚 Giao hàng</button>
             <button onclick="setInput('Phương thức thanh toán nào được hỗ trợ?')" class="btn btn-sm chip">💳 Thanh toán</button>
@@ -142,6 +142,8 @@ async function sendMessage() {
   const btn = document.getElementById('send-btn');
   const text = input.value.trim();
   if (!text) return;
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 16000);
 
   addMessage('user', text);
   input.value = '';
@@ -152,15 +154,20 @@ async function sendMessage() {
     const resp = await fetch('/chat/api/', {
       method: 'POST',
       headers: {'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken')},
-      body: JSON.stringify({message: text})
+      body: JSON.stringify({message: text}),
+      signal: controller.signal
     });
     const data = await resp.json();
     removeLoading();
-    addMessage('assistant', data.response || 'Không có phản hồi.', data.sources, data.personalized);
+    addMessage('assistant', data.answer || data.response || 'Không có phản hồi.', data.suggested_books, Boolean(data.personalized));
   } catch(e) {
     removeLoading();
-    addMessage('assistant', 'Xin lỗi, đã có lỗi xảy ra. Vui lòng thử lại sau.');
+    const fallback = e.name === 'AbortError'
+      ? 'Chat đang phản hồi chậm. Bạn vui lòng thử lại sau ít giây.'
+      : 'Xin lỗi, đã có lỗi xảy ra. Vui lòng thử lại sau.';
+    addMessage('assistant', fallback);
   } finally {
+    clearTimeout(timeoutId);
     btn.disabled = false;
     input.focus();
   }

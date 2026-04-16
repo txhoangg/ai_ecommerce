@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load currency_filters %}
 
 {% block title %}Manage Books - Bookstore{% endblock %}
 
@@ -29,7 +30,7 @@
                 <td>{{ book.id }}</td>
                 <td>{{ book.title }}</td>
                 <td>{{ book.author }}</td>
-                <td>${{ book.price }}</td>
+                <td>{{ book.price|vnd }}</td>
                 <td>
                     {% if book.stock <= 5 %}
                     <span class="badge bg-danger">{{ book.stock }}</span>

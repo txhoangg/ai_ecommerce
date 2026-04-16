@@ -4,7 +4,7 @@ from django.db import models
 class Rating(models.Model):
     """Book rating - Review bounded context"""
     customer_id = models.IntegerField()  # Reference to customer-service
-    book_id = models.IntegerField()  # Reference to book-service
+    book_id = models.IntegerField()  # Reference to product-service
     score = models.FloatField()  # Rating score (e.g., 1-5)
     created_at = models.DateTimeField(auto_now_add=True)
 
@@ -20,7 +20,7 @@ class Rating(models.Model):
 class Review(models.Model):
     """Book review with text comment"""
     customer_id = models.IntegerField()  # Reference to customer-service
-    book_id = models.IntegerField()  # Reference to book-service
+    book_id = models.IntegerField()  # Reference to product-service
     comment = models.TextField()
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

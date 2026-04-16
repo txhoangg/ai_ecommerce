@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load currency_filters %}
 
 {% block title %}Manage Orders - Staff{% endblock %}
 
@@ -28,7 +29,7 @@
                         <td><strong>#{{ order.id }}</strong></td>
                         <td>{{ order.customer_id }}</td>
                         <td>{{ order.created_at|date:"M d, Y H:i" }}</td>
-                        <td><strong>${{ order.final_amount }}</strong></td>
+                        <td><strong>{{ order.final_amount|vnd }}</strong></td>
                         <td>
                             {% if order.status == 'pending' %}
                             <span class="badge bg-warning text-dark">Pending</span>

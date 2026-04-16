@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load currency_filters %}
 
 {% block title %}{{ book.title }} - Bookstore{% endblock %}
 
@@ -7,7 +8,7 @@
     <div class="col-md-8">
         <h2>{{ book.title }}</h2>
         <p><strong>Author:</strong> {{ book.author }}</p>
-        <p><strong>Price:</strong> <span class="text-success">${{ book.price }}</span></p>
+        <p><strong>Price:</strong> <span class="text-success">{{ book.price|vnd }}</span></p>
         <p><strong>Stock:</strong> {{ book.stock }}</p>
         {% if book.description %}
         <p><strong>Description:</strong></p>

@@ -34,7 +34,7 @@ class Staff(models.Model):
 class InventoryLog(models.Model):
     """Inventory log for tracking stock changes"""
     staff_id = models.IntegerField()  # Reference to staff who made the change
-    book_id = models.IntegerField()   # Reference to book (from book-service)
+    book_id = models.IntegerField()   # Reference to book (from product-service)
     action = models.CharField(max_length=100)
     quantity = models.IntegerField()
     created_at = models.DateTimeField(auto_now_add=True)

@@ -24,6 +24,7 @@ ALLOWED_HOSTS = ['*']
 # Application definition
 
 INSTALLED_APPS = [
+    'api_gateway',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -63,6 +64,9 @@ TEMPLATES = [
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
             ],
+            'libraries': {
+                'currency_filters': 'api_gateway.templatetags.currency_filters',
+            },
         },
     },
 ]
@@ -169,11 +173,11 @@ REST_FRAMEWORK = {
 STAFF_SERVICE_URL = os.getenv('STAFF_SERVICE_URL', 'http://localhost:8001')
 MANAGER_SERVICE_URL = os.getenv('MANAGER_SERVICE_URL', 'http://localhost:8002')
 CUSTOMER_SERVICE_URL = os.getenv('CUSTOMER_SERVICE_URL', 'http://localhost:8003')
-CATALOG_SERVICE_URL = os.getenv('CATALOG_SERVICE_URL', 'http://localhost:8004')
-BOOK_SERVICE_URL = os.getenv('BOOK_SERVICE_URL', 'http://localhost:8005')
+PRODUCT_SERVICE_URL = os.getenv('PRODUCT_SERVICE_URL', 'http://localhost:8012')
 CART_SERVICE_URL = os.getenv('CART_SERVICE_URL', 'http://localhost:8006')
 ORDER_SERVICE_URL = os.getenv('ORDER_SERVICE_URL', 'http://localhost:8007')
 SHIP_SERVICE_URL = os.getenv('SHIP_SERVICE_URL', 'http://localhost:8008')
 PAY_SERVICE_URL = os.getenv('PAY_SERVICE_URL', 'http://localhost:8009')
 COMMENT_RATE_SERVICE_URL = os.getenv('COMMENT_RATE_SERVICE_URL', 'http://localhost:8010')
-RECOMMENDER_SERVICE_URL = os.getenv('RECOMMENDER_SERVICE_URL', 'http://localhost:8011')
+AI_SERVICE_URL = os.getenv('AI_SERVICE_URL', 'http://localhost:8013')
+AI_CHAT_TIMEOUT_SECONDS = int(os.getenv('AI_CHAT_TIMEOUT_SECONDS', '15'))
